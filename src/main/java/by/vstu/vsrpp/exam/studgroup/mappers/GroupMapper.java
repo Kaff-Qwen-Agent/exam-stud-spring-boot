@@ -34,6 +34,8 @@ public interface GroupMapper {
     Group toEntity(GroupRequest request);
 
     // NEW: Для UPDATE (обновляет существующую сущность)
+    // shifr — первичный ключ, его менять нельзя
+    @Mapping(target = "shifr", ignore = true)
     @Mapping(target = "students", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "statusDate", ignore = true)

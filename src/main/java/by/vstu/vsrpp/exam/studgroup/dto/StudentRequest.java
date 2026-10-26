@@ -9,6 +9,10 @@ public class StudentRequest {
 	@NotNull
 	private Long nomerZachetki;
 
+	// Идентификатор (шифр) группы студента; обязателен при создании,
+	// в addStudents группа определяется путём запроса
+	private Integer shifrGruppyi;
+
 	@NotBlank
 	@Size(max = 30)
 	private String familiya;
@@ -42,6 +46,14 @@ public class StudentRequest {
 
 	public void setNomerZachetki(Long nomerZachetki) {
 		this.nomerZachetki = nomerZachetki;
+	}
+
+	public Integer getShifrGruppyi() {
+		return shifrGruppyi;
+	}
+
+	public void setShifrGruppyi(Integer shifrGruppyi) {
+		this.shifrGruppyi = shifrGruppyi;
 	}
 
 	public String getFamiliya() {

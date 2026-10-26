@@ -18,6 +18,9 @@ import by.vstu.vsrpp.exam.studgroup.validation.ValidStudentCount;
 
 @Entity
 @Table(name = "gruppyi")
+// Hibernate persist-валидация отключена в application.properties:
+// новая группа законно создаётся с 0 студентами, правило 1..3
+// проверяется вручную через Validator в GroupServiceImpl.addStudents
 @ValidStudentCount(min = 1, max = 3)
 public class Group {
 

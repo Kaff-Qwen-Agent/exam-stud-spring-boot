@@ -22,6 +22,8 @@ public interface StudentMapper {
     @Mapping(target = "statusDate", ignore = true)
     Student toEntity(StudentRequest request);
 
+    // nomerZachetki — первичный ключ, его менять нельзя
+    @Mapping(target = "nomerZachetki", ignore = true)
     @Mapping(target = "group", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "statusDate", ignore = true)

@@ -11,12 +11,12 @@ CREATE TABLE IF NOT EXISTS gruppyi (
 CREATE TABLE IF NOT EXISTS studentyi (
   ShifrGruppyi INT NOT NULL,
   NomerZachetki BIGINT NOT NULL,
-  Familiya CHAR(30) NOT NULL,
-  Imya CHAR(30) NOT NULL,
-  Otchestvo CHAR(30) NOT NULL,
-  Gorod CHAR(30) NOT NULL,
-  Adres CHAR(80) NOT NULL,
-  Tel CHAR(30) NOT NULL,
+  Familiya VARCHAR(30) NOT NULL,
+  Imya VARCHAR(30) NOT NULL,
+  Otchestvo VARCHAR(30) NOT NULL,
+  Gorod VARCHAR(30) NOT NULL,
+  Adres VARCHAR(80) NOT NULL,
+  Tel VARCHAR(30) NOT NULL,
   Status VARCHAR(50),
   StatusDate DATE,
   PRIMARY KEY (NomerZachetki),
@@ -28,6 +28,10 @@ INSERT INTO gruppyi (Nazvanie, Shifr, DataFormir, KodPlana, Status, StatusDate) 
 ('It-2', 2, '2013-09-15', 2, 'created', CURRENT_DATE),
 ('A-2', 3, '2013-09-15', 1, 'created', CURRENT_DATE),
 ('A-3', 4, '2014-09-15', 1, 'created', CURRENT_DATE);
+
+-- В H2 2.x явные вставки не продвигают счётчик IDENTITY;
+-- перезапускаем его выше сид-данных, иначе новая группа получит Shifr=1
+ALTER TABLE gruppyi ALTER COLUMN Shifr RESTART WITH 5;
 
 INSERT INTO studentyi (ShifrGruppyi, NomerZachetki, Familiya, Imya, Otchestvo, Gorod, Adres, Tel, Status, StatusDate) VALUES
 (1, 10122, 'Petrov', 'Peter', 'Ivanich', 'Vitebsk', 'Moskow awe., 62, 2, 129', '+375297451421', 'graduate', CURRENT_DATE),
@@ -48,4 +52,4 @@ CREATE TABLE IF NOT EXISTS app_user (
 );
 
 INSERT INTO app_user (username, password, role) VALUES
-('user', 'password', 'USER');
+('user', '{noop}password', 'USER');

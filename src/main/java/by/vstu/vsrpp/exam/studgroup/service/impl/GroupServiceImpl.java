@@ -1,6 +1,7 @@
 package by.vstu.vsrpp.exam.studgroup.service.impl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -42,17 +43,10 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public GroupResponse create(GroupRequest request) {
-        Group group = groupMapper.toEntity(request);
-        
-        // Ручная валидация бизнес-правил через ValidStudentCountValidator
-        Set<ConstraintViolation<Group>> violations = validator.validate(group);
-        if (!violations.isEmpty()) {
-            throw new GroupValidationException(
-                violations.stream().map(ConstraintViolation::getMessage).collect(Collectors.toList())
-            );
-        }
-
-        Group saved = repository.save(group);
+        // Новая группа всегда создаётся без студентов, поэтому ограничение
+        // @ValidStudentCount(min = 1) здесь не проверяется: студенты
+        // добавляются позже через addStudents, где и проходит валидация.
+        Group saved = repository.save(groupMapper.toEntity(request));
         return groupMapper.toResponse(saved);
     }
 
@@ -74,16 +68,8 @@ public class GroupServiceImpl implements GroupService {
         Group group = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Группа с id " + id + " не найдена"));
 
-        // Обновляем поля существующей сущности
+        // Обновляем поля существующей сущности (количество студентов не меняется)
         groupMapper.updateEntityFromDto(request, group);
-
-        // Валидация после обновления
-        Set<ConstraintViolation<Group>> violations = validator.validate(group);
-        if (!violations.isEmpty()) {
-            throw new GroupValidationException(
-                violations.stream().map(ConstraintViolation::getMessage).collect(Collectors.toList())
-            );
-        }
 
         Group updated = repository.save(group);
         return groupMapper.toResponse(updated);
@@ -108,7 +94,7 @@ public class GroupServiceImpl implements GroupService {
 
 
         // Временное добавление для валидации
-        List<Student> tempStudents = new ArrayList<>(group.getStudents() != null ? group.getStudents() : List.of());
+        List<Student> tempStudents = new ArrayList<>(group.getStudents() != null ? group.getStudents() : Collections.emptyList());
         tempStudents.addAll(newStudents);
         group.setStudents(tempStudents);
 

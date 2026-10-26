@@ -17,14 +17,14 @@
 Файл конфигурации: `src/main/resources/application.properties`
 
 - H2 в памяти: `spring.datasource.url=jdbc:h2:mem:gr;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE`
-- DDL авто-создание: `spring.jpa.hibernate.ddl-auto=create`
-- Инициализация данных: `spring.datasource.data=classpath:data.sql`
+- DDL авто-создание: `spring.jpa.hibernate.ddl-auto=none`
+- Инициализация схемы и данных: `spring.datasource.schema=classpath:Grops_Studs_2021.sql`
 - JWT секрет: `jwt.secret`
 - Время жизни токена: `jwt.expiration-ms`
 
 ## Инициализация данных
 
-`src/main/resources/data.sql` заполняет базу при старте.
+`src/main/resources/Grops_Studs_2021.sql` создаёт таблицы и заполняет базу при старте.
 
 По умолчанию создаётся пользователь:
 
