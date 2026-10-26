@@ -2,7 +2,9 @@ package by.vstu.vsrpp.exam.studgroup.service.impl;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -16,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import by.vstu.vsrpp.exam.studgroup.dto.AddStudentsRequest;
 import by.vstu.vsrpp.exam.studgroup.dto.GroupRequest;
 import by.vstu.vsrpp.exam.studgroup.dto.GroupResponse;
+import by.vstu.vsrpp.exam.studgroup.dto.GroupStatusStatistics;
 import by.vstu.vsrpp.exam.studgroup.entity.Group;
 import by.vstu.vsrpp.exam.studgroup.entity.Student;
+import by.vstu.vsrpp.exam.studgroup.exception.DuplicateEntityException;
 import by.vstu.vsrpp.exam.studgroup.exception.GroupValidationException;
 import by.vstu.vsrpp.exam.studgroup.mappers.GroupMapper;
 import by.vstu.vsrpp.exam.studgroup.repository.GroupRepository;
@@ -46,6 +50,7 @@ public class GroupServiceImpl implements GroupService {
         // Новая группа всегда создаётся без студентов, поэтому ограничение
         // @ValidStudentCount(min = 1) здесь не проверяется: студенты
         // добавляются позже через addStudents, где и проходит валидация.
+        checkNazvanieFree(request.getNazvanie(), null);
         Group saved = repository.save(groupMapper.toEntity(request));
         return groupMapper.toResponse(saved);
     }
@@ -69,6 +74,7 @@ public class GroupServiceImpl implements GroupService {
                 .orElseThrow(() -> new IllegalArgumentException("Группа с id " + id + " не найдена"));
 
         // Обновляем поля существующей сущности (количество студентов не меняется)
+        checkNazvanieFree(request.getNazvanie(), id);
         groupMapper.updateEntityFromDto(request, group);
 
         Group updated = repository.save(group);
@@ -108,5 +114,37 @@ public class GroupServiceImpl implements GroupService {
         studentRepository.saveAll(newStudents);
         Group saved = repository.save(group);
         return groupMapper.toResponse(saved);
+    }
+
+    @Override
+    public List<GroupStatusStatistics> findStatusStatistics() {        // Все группы, включая пустые — у них пустая карта статусов
+        Map<Integer, GroupStatusStatistics> byShifr = new LinkedHashMap<>();
+        for (Group group : repository.findAll()) {
+            byShifr.put(group.getShifr(), new GroupStatusStatistics(group.getShifr(), group.getNazvanie()));
+        }
+        for (Object[] row : repository.countStudentsByGroupAndStatus()) {
+            Integer shifr = (Integer) row[0];
+            String nazvanie = (String) row[1];
+            String status = row[2] != null ? (String) row[2] : "unknown";
+            Long count = (Long) row[3];
+            GroupStatusStatistics stats = byShifr.get(shifr);
+            if (stats == null) {
+                stats = new GroupStatusStatistics(shifr, nazvanie);
+                byShifr.put(shifr, stats);
+            }
+            stats.addCount(status, count);
+        }
+        return new ArrayList<>(byShifr.values());
+    }
+
+    // Название группы уникально (UNIQUE в БД); проверяем заранее,
+    // чтобы клиент получил 409 с понятным сообщением вместо 500
+    private void checkNazvanieFree(String nazvanie, Integer currentShifr) {
+        boolean taken = currentShifr == null
+                ? repository.existsByNazvanie(nazvanie)
+                : repository.existsByNazvanieAndShifrNot(nazvanie, currentShifr);
+        if (taken) {
+            throw new DuplicateEntityException("Группа с названием '" + nazvanie + "' уже существует");
+        }
     }
 }

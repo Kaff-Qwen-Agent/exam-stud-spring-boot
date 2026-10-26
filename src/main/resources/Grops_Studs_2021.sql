@@ -52,4 +52,7 @@ CREATE TABLE IF NOT EXISTS app_user (
 );
 
 INSERT INTO app_user (username, password, role) VALUES
-('user', '{noop}password', 'USER');
+('user', '{noop}password', 'USER'),
+('student', '{noop}student123', 'STUDENT'),
+('teacher', '{noop}teacher123', 'TEACHER'),
+('admin', '{noop}admin123', 'ADMIN');

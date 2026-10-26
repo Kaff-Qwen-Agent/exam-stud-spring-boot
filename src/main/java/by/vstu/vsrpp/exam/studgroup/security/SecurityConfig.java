@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -22,6 +23,8 @@ import java.util.Collections;
 
 @Configuration
 @EnableWebSecurity
+// Включает проверку @PreAuthorize на методах контроллеров
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final AppUserRepository appUserRepository;
@@ -61,7 +64,8 @@ public class SecurityConfig {
                 .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(headers -> headers.frameOptions().sameOrigin())
                 .authorizeRequests(requests -> requests
-                        .antMatchers("/api/auth/**", "/h2-console/**").permitAll()
+                        .antMatchers("/api/auth/**", "/h2-console/**",
+                                "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
                         )
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
