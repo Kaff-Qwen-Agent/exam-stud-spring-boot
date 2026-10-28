@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import org.springdoc.api.annotations.ParameterObject;
 
+import by.vstu.vsrpp.exam.studgroup.dto.StudentGroupInfo;
 import by.vstu.vsrpp.exam.studgroup.dto.StudentRequest;
 import by.vstu.vsrpp.exam.studgroup.dto.StudentResponse;
 import by.vstu.vsrpp.exam.studgroup.service.StudentService;
@@ -46,6 +47,14 @@ public class StudentController {
     @PreAuthorize("hasAnyRole('STUDENT', 'ADMIN')")
     public ResponseEntity<StudentResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(service.findById(id));
+    }
+
+    // Задание 3: данные о группе указанного студента (номер зачетки — в URL).
+    // Вывод: фамилия студента, название группы.
+    @GetMapping("/{id}/group")
+    @PreAuthorize("hasAnyRole('STUDENT', 'ADMIN')")
+    public ResponseEntity<StudentGroupInfo> getGroupOfStudent(@PathVariable Long id) {
+        return ResponseEntity.ok(service.findGroupOfStudent(id));
     }
 
     @PutMapping("/{id}")

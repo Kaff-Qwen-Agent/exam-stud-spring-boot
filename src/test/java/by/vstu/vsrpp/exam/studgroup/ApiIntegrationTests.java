@@ -284,4 +284,171 @@ class ApiIntegrationTests {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.length()").value(3));
     }
+
+    // Задание 1: группы с менее чем 2 студентами (сид: A-3 — 2, остальные >=... проверим count<2)
+    @Test
+    void groupsWithFewerThanTwoStudents() throws Exception {
+        mockMvc.perform(get("/api/group/small?maxCount=2").header("Authorization", "Bearer " + login()))
+                .andExpect(status().isOk())
+                // Сид: It-1 — 2 студента, It-2 — 1, A-2 — 3, A-3 — 2 => только It-2
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].nazvanie").value("It-2"))
+                .andExpect(jsonPath("$[0].studentCount").value(1));
+        // По умолчанию maxCount = 2
+        mockMvc.perform(get("/api/group/small").header("Authorization", "Bearer " + login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nazvanie").value("It-2"));
+    }
+
+    // Задание 2: группы, созданные более года назад (statusDate в сидах — CURRENT_DATE,
+    // поэтому создадим группу со старым statusDate через SQL-недоступный путь: обновить нельзя,
+    // значит проверяем, что сид-группы (текущая дата) не попадают в выборку)
+    @Test
+    void groupsOlderThanOneYearExcludesRecentGroups() throws Exception {
+        mockMvc.perform(get("/api/group/older-than-year").header("Authorization", "Bearer " + login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    // Задание 3: группа указанного студента — фамилия + название группы
+    @Test
+    void groupOfStudentReturnsFamiliyaAndGroupName() throws Exception {
+        String auth = "Bearer " + login();
+        mockMvc.perform(get("/api/student/10122/group").header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.familiya").value("Petrov"))
+                .andExpect(jsonPath("$.nazvanieGruppyi").value("It-1"));
+        mockMvc.perform(get("/api/student/999999/group").header("Authorization", auth))
+                .andExpect(status().isBadRequest());
+        // Роль STUDENT тоже имеет доступ
+        mockMvc.perform(get("/api/student/10123/group")
+                        .header("Authorization", "Bearer " + loginAs("student", "student123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.familiya").value("Sidorov"))
+                .andExpect(jsonPath("$.nazvanieGruppyi").value("It-1"));
+    }
+
+    // Задание 4: пустое имя или имя с пробелом — запись не сохраняется, ответ "Нужно указать имя"
+    @Test
+    void studentCreateRejectsBlankOrSpacedName() throws Exception {
+        String auth = "Bearer " + login();
+        // Имя с пробелом
+        mockMvc.perform(post("/api/student")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nomerZachetki\":950011,\"shifrGruppyi\":2,\"familiya\":\"Ivan Petrov\",\"imya\":\"Y\","
+                                + "\"otchestvo\":\"Z\",\"gorod\":\"V\",\"adres\":\"A\",\"tel\":\"T\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0]").value("Нужно указать имя"));
+        // Пустая фамилия (пробельные символы) — сервисный уровень валидации:
+        // @NotBlank из-за пробелов не срабатывает, а "Нужно указать имя" возвращает сервис
+        mockMvc.perform(post("/api/student")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nomerZachetki\":950012,\"shifrGruppyi\":2,\"familiya\":\" \",\"imya\":\"Y\","
+                                + "\"otchestvo\":\"Z\",\"gorod\":\"V\",\"adres\":\"A\",\"tel\":\"T\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0]").value("Нужно указать имя"));
+        // Пустое (нулевой длины) имя блокирует bean validation — запись тоже не сохраняется
+        mockMvc.perform(post("/api/student")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nomerZachetki\":950013,\"shifrGruppyi\":2,\"familiya\":\"\",\"imya\":\"Y\","
+                                + "\"otchestvo\":\"Z\",\"gorod\":\"V\",\"adres\":\"A\",\"tel\":\"T\"}"))
+                .andExpect(status().isBadRequest());
+        // Запись не сохранена
+        mockMvc.perform(get("/api/student/950011").header("Authorization", auth))
+                .andExpect(status().isBadRequest());
+    }
+
+    // Задание 5: удаление группы с переносом студентов в другую группу (номера групп — в URL)
+    @Test
+    void deleteGroupTransfersStudentsToTargetGroup() throws Exception {
+        String auth = "Bearer " + login();
+        // Создаём временную группу и добавляем ей одного студента
+        MvcResult created = mockMvc.perform(post("/api/group")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"shifr\":700,\"nazvanie\":\"Trn-G\",\"dataFormir\":\"2024-09-01\",\"kodPlana\":5}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        int trnId = ((Integer) com.jayway.jsonpath.JsonPath.read(
+                created.getResponse().getContentAsString(), "$.shifr")).intValue();
+
+        mockMvc.perform(post("/api/group/addstudents/" + trnId)
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"students\":[{\"nomerZachetki\":903001,\"familiya\":\"Transferov\",\"imya\":\"T\","
+                                + "\"otchestvo\":\"T\",\"gorod\":\"V\",\"adres\":\"A\",\"tel\":\"+375290000011\"}]}"))
+                .andExpect(status().isOk());
+
+        // Перенос: удаляем trnId, студенты уходят во 2-ю группу (It-2, 1 студент -> станет 2)
+        mockMvc.perform(delete("/api/group/" + trnId + "/transfer/2").header("Authorization", auth))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/group/" + trnId).header("Authorization", auth))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/student/903001").header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.familiya").value("Transferov"));
+        mockMvc.perform(get("/api/student/903001/group").header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nazvanieGruppyi").value("It-2"));
+
+        // Убираем за собой
+        mockMvc.perform(delete("/api/student/903001").header("Authorization", auth))
+                .andExpect(status().isNoContent());
+    }
+
+    // Задание 5 (негативный): переполнение целевой группы (@ValidStudentCount max=3) — 400
+    @Test
+    void deleteGroupTransferRejectsOverflowTarget() throws Exception {
+        String auth = "Bearer " + login();
+        MvcResult created = mockMvc.perform(post("/api/group")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"shifr\":701,\"nazvanie\":\"Trn-G2\",\"dataFormir\":\"2024-09-01\",\"kodPlana\":5}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        int srcId = ((Integer) com.jayway.jsonpath.JsonPath.read(
+                created.getResponse().getContentAsString(), "$.shifr")).intValue();
+
+        // В src 2 студента; цель A-2 (id 3) уже имеет 3 студента -> перенос невозможен
+        mockMvc.perform(post("/api/group/addstudents/" + srcId)
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"students\":["
+                                + "{\"nomerZachetki\":903011,\"familiya\":\"One\",\"imya\":\"I\",\"otchestvo\":\"O\","
+                                + "\"gorod\":\"V\",\"adres\":\"A\",\"tel\":\"+375290000021\"},"
+                                + "{\"nomerZachetki\":903012,\"familiya\":\"Two\",\"imya\":\"I\",\"otchestvo\":\"O\","
+                                + "\"gorod\":\"V\",\"adres\":\"A\",\"tel\":\"+375290000022\"}]}" ))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/group/" + srcId + "/transfer/3").header("Authorization", auth))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors").isNotEmpty());
+
+        // Группа не удалена, студенты на месте
+        mockMvc.perform(get("/api/group/" + srcId).header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.students.length()").value(2));
+
+        // Очистка
+        mockMvc.perform(delete("/api/student/903011").header("Authorization", auth))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/api/student/903012").header("Authorization", auth))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/api/group/" + srcId).header("Authorization", auth))
+                .andExpect(status().isNoContent());
+    }
+
+    // Задание 6: анонимные пользователи не имеют доступа к данным о студентах,
+    // авторизованные (STUDENT) — имеют; данные о группах доступны только авторизованным
+    @Test
+    void anonymousUsersCannotSeeStudentData() throws Exception {
+        mockMvc.perform(get("/api/student")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/student/10122")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/student/10122/group")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/group")).andExpect(status().isForbidden());
+    }
 }

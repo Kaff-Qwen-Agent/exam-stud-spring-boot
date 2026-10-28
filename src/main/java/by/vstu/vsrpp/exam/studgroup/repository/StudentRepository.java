@@ -10,7 +10,10 @@ import by.vstu.vsrpp.exam.studgroup.entity.Student;
 
 public interface StudentRepository extends JpaRepository<Student, Long> {
 
-	List<Student> findByNomerZachetkiBetween(Long from, Long to);
+        List<Student> findByNomerZachetkiBetween(Long from, Long to);
 
-	Page<Student> findByNomerZachetkiBetween(Long from, Long to, Pageable pageable);
+        Page<Student> findByNomerZachetkiBetween(Long from, Long to, Pageable pageable);
+
+        // Студенты конкретной группы (для переноса при удалении группы)
+        List<Student> findByGroupShifr(int groupShifr);
 }
