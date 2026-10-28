@@ -19,6 +19,12 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.badRequest().body(new ValidationErrorResponse(ex.getErrors()));
 	}
 
+	// Задание 4: некорректное имя студента — JSON с сообщением "Нужно указать имя"
+	@ExceptionHandler(InvalidStudentNameException.class)
+	public ResponseEntity<ValidationErrorResponse> handleInvalidStudentName(InvalidStudentNameException ex) {
+		return ResponseEntity.badRequest().body(new ValidationErrorResponse(ex.getMessage()));
+	}
+
 	// Дубликат (уникальный ключ, повторный PK) — 409 вместо 500
 	@ExceptionHandler(DuplicateEntityException.class)
 	public ResponseEntity<ValidationErrorResponse> handleDuplicate(DuplicateEntityException ex) {

@@ -3,6 +3,7 @@ package by.vstu.vsrpp.exam.studgroup.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import by.vstu.vsrpp.exam.studgroup.dto.StudentGroupInfo;
 import by.vstu.vsrpp.exam.studgroup.dto.StudentRequest;
 import by.vstu.vsrpp.exam.studgroup.dto.StudentResponse;
 
@@ -12,6 +13,11 @@ public interface StudentService {
     Page<StudentResponse> findAll(Long from, Long to, Pageable pageable);
 
     StudentResponse findById(Long id);
+
+    // Задание 3: группа указанного студента (фамилия студента + название группы)
+    StudentGroupInfo findGroupOfStudent(Long nomerZachetki);
+
     StudentResponse update(Long id, StudentRequest request);
+
     void delete(Long id);
 }
